@@ -7,41 +7,42 @@ using UnityEngine.Networking;
 
 public class Rooms
 {
-	public string name;
-	public Dictionary<string, MasterMsgTypes.Room> rooms = new Dictionary<string, MasterMsgTypes.Room>();
+    public string name;
+    public Dictionary<string, MasterMsgTypes.Room> rooms = new Dictionary<string, MasterMsgTypes.Room>();
 
-	public bool AddHost(string gameName, string comment, string hostIp, int hostPort, int playerLimit, int connectionId)
-	{
-		if (rooms.ContainsKey(gameName))
-		{
-			return false;
-		}
+    public bool AddHost(string gameName, string comment, string hostIp, int hostPort, int playerLimit, int connectionId)
+    {
+        if (rooms.ContainsKey(gameName))
+        {
+            return false;
+        }
 
-		MasterMsgTypes.Room room = new MasterMsgTypes.Room();
-		room.name = gameName;
-		room.comment = comment;
-		room.hostIp = hostIp;
-		room.hostPort = hostPort;
-		room.connectionId = connectionId;
-		rooms[gameName] = room;
+        MasterMsgTypes.Room room = new MasterMsgTypes.Room();
+        room.name = gameName;
+        room.comment = comment;
+        room.hostIp = hostIp;
+        room.hostPort = hostPort;
+        room.connectionId = connectionId;
         room.playerLimit = playerLimit;
         room.currentPlayers = 0;
 
-		return true;
-	}
+        rooms[gameName] = room;
 
-	public MasterMsgTypes.Room[] GetRooms()
-	{
-		return rooms.Values.ToArray();
-	}
+        return true;
+    }
+
+    public MasterMsgTypes.Room[] GetRooms()
+    {
+        return rooms.Values.ToArray();
+    }
 }
 
 public class NetworkMasterServer : MonoBehaviour
 {
-	public int MasterServerPort;
+    public int MasterServerPort;
 
-	// map of gameTypeNames to rooms of that type
-	Dictionary<string, Rooms> gameTypeRooms = new Dictionary<string, Rooms>();
+    // map of gameTypeNames to rooms of that type
+    Dictionary<string, Rooms> gameTypeRooms = new Dictionary<string, Rooms>();
 
 
     public void Awake()
@@ -49,173 +50,174 @@ public class NetworkMasterServer : MonoBehaviour
         InitializeServer();
     }
 
-	public void InitializeServer()
-	{
-		if (NetworkServer.active)
-		{
-			Debug.LogError("Already Initialized");
-			return;
-		}
+    public void InitializeServer()
+    {
+        print("Started Master Server");
+        if (NetworkServer.active)
+        {
+            Debug.LogError("Already Initialized");
+            return;
+        }
 
-		NetworkServer.Listen(MasterServerPort);
+        NetworkServer.Listen(MasterServerPort);
 
-		// system msgs
-		NetworkServer.RegisterHandler(MsgType.Connect, OnServerConnect);
-		NetworkServer.RegisterHandler(MsgType.Disconnect, OnServerDisconnect);
-		NetworkServer.RegisterHandler(MsgType.Error, OnServerError);
+        // system msgs
+        NetworkServer.RegisterHandler(MsgType.Connect, OnServerConnect);
+        NetworkServer.RegisterHandler(MsgType.Disconnect, OnServerDisconnect);
+        NetworkServer.RegisterHandler(MsgType.Error, OnServerError);
 
-		// application msgs
-		NetworkServer.RegisterHandler(MasterMsgTypes.RegisterHostId, OnServerRegisterHost);
-		NetworkServer.RegisterHandler(MasterMsgTypes.UnregisterHostId, OnServerUnregisterHost);
-		NetworkServer.RegisterHandler(MasterMsgTypes.RequestListOfHostsId, OnServerListHosts);
+        // application msgs
+        NetworkServer.RegisterHandler(MasterMsgTypes.RegisterHostId, OnServerRegisterHost);
+        NetworkServer.RegisterHandler(MasterMsgTypes.UnregisterHostId, OnServerUnregisterHost);
+        NetworkServer.RegisterHandler(MasterMsgTypes.RequestListOfHostsId, OnServerListHosts);
 
         NetworkServer.RegisterHandler(MasterMsgTypes.updatePlayers, OnUpdatePlayers);
         DontDestroyOnLoad(gameObject);
-	}
+    }
 
-	public void ResetServer()
-	{
-		NetworkServer.Shutdown();
-	}
+    public void ResetServer()
+    {
+        NetworkServer.Shutdown();
+    }
 
-	Rooms EnsureRoomsForGameType(string gameTypeName)
-	{
-		if (gameTypeRooms.ContainsKey(gameTypeName))
-		{
-			return gameTypeRooms[gameTypeName];
-		}
+    Rooms EnsureRoomsForGameType(string gameTypeName)
+    {
+        if (gameTypeRooms.ContainsKey(gameTypeName))
+        {
+            return gameTypeRooms[gameTypeName];
+        }
 
-		Rooms newRooms = new Rooms();
-		newRooms.name = gameTypeName;
-		gameTypeRooms[gameTypeName] = newRooms;
-		return newRooms;
-	}
+        Rooms newRooms = new Rooms();
+        newRooms.name = gameTypeName;
+        gameTypeRooms[gameTypeName] = newRooms;
+        return newRooms;
+    }
 
-	// --------------- System Handlers -----------------
+    // --------------- System Handlers -----------------
 
-	void OnServerConnect(NetworkMessage netMsg)
-	{
-		Debug.Log("Master received client");
-	}
+    void OnServerConnect(NetworkMessage netMsg)
+    {
+        Debug.Log("Master received client");
+    }
 
     void OnUpdatePlayers(NetworkMessage curP)
     {
         var info = curP.ReadMessage<MasterMsgTypes.UpdatePlayerMessage>();
 
-        foreach(var rooms in gameTypeRooms.Values)
+        foreach (var rooms in gameTypeRooms.Values)
         {
-            for(int i = 0; i < rooms.rooms.Count; i++)
+            for (int i = 0; i < rooms.rooms.Count; i++)
             {
-               if(rooms.GetRooms()[i].hostIp == curP.conn.address)
-               {
+                if (rooms.GetRooms()[i].hostIp == curP.conn.address)
+                {
                     rooms.GetRooms()[i].currentPlayers = info.newP;
                     break;
-               }
+                }
             }
         }
     }
 
-	void OnServerDisconnect(NetworkMessage netMsg)
-	{
-		Debug.Log("Master lost client");
+    void OnServerDisconnect(NetworkMessage netMsg)
+    {
+        Debug.Log("Master lost client");
 
-		// remove the associated host
-		foreach (var rooms in gameTypeRooms.Values)
-		{
-			foreach (var room in rooms.rooms.Values)
-			{
-				if (room.connectionId == netMsg.conn.connectionId)
-				{
+        // remove the associated host
+        foreach (var rooms in gameTypeRooms.Values)
+        {
+            foreach (var room in rooms.rooms.Values)
+            {
+                if (room.connectionId == netMsg.conn.connectionId)
+                {
                     // tell other players?
 
-					// remove room
-					rooms.rooms.Remove(room.name);
+                    // remove room
+                    rooms.rooms.Remove(room.name);
 
-					Debug.Log("Room ["+room.name+"] closed because host left");
-					break;
-				}
-			}
-		}
+                    Debug.Log("Room [" + room.name + "] closed because host left");
+                    break;
+                }
+            }
+        }
 
-	}
+    }
 
-	void OnServerError(NetworkMessage netMsg)
-	{
-		Debug.Log("ServerError from Master");
-	}
+    void OnServerError(NetworkMessage netMsg)
+    {
+        Debug.Log("ServerError from Master");
+    }
 
-	// --------------- Application Handlers -----------------
+    // --------------- Application Handlers -----------------
 
-	void OnServerRegisterHost(NetworkMessage netMsg)
-	{
-		Debug.Log("OnServerRegisterHost");
-		var msg = netMsg.ReadMessage<MasterMsgTypes.RegisterHostMessage>();
-		var rooms = EnsureRoomsForGameType(msg.gameTypeName);
-        
-		int result = (int)MasterMsgTypes.NetworkMasterServerEvent.RegistrationSucceeded;
-		if (!rooms.AddHost(msg.gameName, msg.comment, netMsg.conn.address, msg.hostPort, msg.playerLimit, netMsg.conn.connectionId))
-		{
-			result = (int)MasterMsgTypes.NetworkMasterServerEvent.RegistrationFailedGameName;
-		}
+    void OnServerRegisterHost(NetworkMessage netMsg)
+    {
+        Debug.Log("OnServerRegisterHost");
+        var msg = netMsg.ReadMessage<MasterMsgTypes.RegisterHostMessage>();
+        var rooms = EnsureRoomsForGameType(msg.gameTypeName);
 
-		var response = new MasterMsgTypes.RegisteredHostMessage();
-		response.resultCode = result;
-		netMsg.conn.Send(MasterMsgTypes.RegisteredHostId, response);
-	}
+        int result = (int)MasterMsgTypes.NetworkMasterServerEvent.RegistrationSucceeded;
+        if (!rooms.AddHost(msg.gameName, msg.comment, netMsg.conn.address, msg.hostPort, msg.playerLimit, netMsg.conn.connectionId))
+        {
+            result = (int)MasterMsgTypes.NetworkMasterServerEvent.RegistrationFailedGameName;
+        }
 
-
-
-	void OnServerUnregisterHost(NetworkMessage netMsg)
-	{
-		Debug.Log("OnServerUnregisterHost");
-		var msg = netMsg.ReadMessage<MasterMsgTypes.UnregisterHostMessage>();
-
-		// find the room
-		var rooms = EnsureRoomsForGameType(msg.gameTypeName);
-		if (!rooms.rooms.ContainsKey(msg.gameName))
-		{
-			//error
-			Debug.Log("OnServerUnregisterHost game not found: " + msg.gameName);
-			return;
-		}
-
-		var room = rooms.rooms[msg.gameName];
-		if (room.connectionId != netMsg.conn.connectionId)
-		{
-			//err
-			Debug.Log("OnServerUnregisterHost connection mismatch:" + room.connectionId);
-			return;
-		}
-		rooms.rooms.Remove(msg.gameName);
-
-		// tell other players?
-
-		var response = new MasterMsgTypes.RegisteredHostMessage();
-		response.resultCode = (int)MasterMsgTypes.NetworkMasterServerEvent.UnregistrationSucceeded;
-		netMsg.conn.Send(MasterMsgTypes.UnregisteredHostId, response);
-	}
-
-	void OnServerListHosts(NetworkMessage netMsg)
-	{
-		Debug.Log("OnServerListHosts");
-		var msg = netMsg.ReadMessage<MasterMsgTypes.RequestHostListMessage>();
-		if (!gameTypeRooms.ContainsKey(msg.gameTypeName))
-		{
-			var err = new MasterMsgTypes.ListOfHostsMessage();
-			err.resultCode = -1;
-			netMsg.conn.Send(MasterMsgTypes.ListOfHostsId, err);
-			return;
-		}
-
-		var rooms = gameTypeRooms[msg.gameTypeName];
-		var response = new MasterMsgTypes.ListOfHostsMessage();
-		response.resultCode = 0;
-		response.hosts = rooms.GetRooms();
-		netMsg.conn.Send(MasterMsgTypes.ListOfHostsId, response);
-	}
+        var response = new MasterMsgTypes.RegisteredHostMessage();
+        response.resultCode = result;
+        netMsg.conn.Send(MasterMsgTypes.RegisteredHostId, response);
+    }
 
 
-	/*void OnGUI()
+
+    void OnServerUnregisterHost(NetworkMessage netMsg)
+    {
+        Debug.Log("OnServerUnregisterHost");
+        var msg = netMsg.ReadMessage<MasterMsgTypes.UnregisterHostMessage>();
+
+        // find the room
+        var rooms = EnsureRoomsForGameType(msg.gameTypeName);
+        if (!rooms.rooms.ContainsKey(msg.gameName))
+        {
+            //error
+            Debug.Log("OnServerUnregisterHost game not found: " + msg.gameName);
+            return;
+        }
+
+        var room = rooms.rooms[msg.gameName];
+        if (room.connectionId != netMsg.conn.connectionId)
+        {
+            //err
+            Debug.Log("OnServerUnregisterHost connection mismatch:" + room.connectionId);
+            return;
+        }
+        rooms.rooms.Remove(msg.gameName);
+
+        // tell other players?
+
+        var response = new MasterMsgTypes.RegisteredHostMessage();
+        response.resultCode = (int)MasterMsgTypes.NetworkMasterServerEvent.UnregistrationSucceeded;
+        netMsg.conn.Send(MasterMsgTypes.UnregisteredHostId, response);
+    }
+
+    void OnServerListHosts(NetworkMessage netMsg)
+    {
+        Debug.Log("OnServerListHosts");
+        var msg = netMsg.ReadMessage<MasterMsgTypes.RequestHostListMessage>();
+        if (!gameTypeRooms.ContainsKey(msg.gameTypeName))
+        {
+            var err = new MasterMsgTypes.ListOfHostsMessage();
+            err.resultCode = -1;
+            netMsg.conn.Send(MasterMsgTypes.ListOfHostsId, err);
+            return;
+        }
+
+        var rooms = gameTypeRooms[msg.gameTypeName];
+        var response = new MasterMsgTypes.ListOfHostsMessage();
+        response.resultCode = 0;
+        response.hosts = rooms.GetRooms();
+        netMsg.conn.Send(MasterMsgTypes.ListOfHostsId, response);
+    }
+
+
+    /*void OnGUI()
 	{
 		if (NetworkServer.active)
 		{

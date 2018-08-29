@@ -4,48 +4,48 @@ using UnityEngine.Networking;
 
 public class MasterMsgTypes
 {
-	public enum NetworkMasterServerEvent
-	{
-		RegistrationFailedGameName, // Registration failed because an empty game name was given.
-		RegistrationFailedGameType, // Registration failed because an empty game type was given.
-		RegistrationFailedNoServer, // Registration failed because no server is running.
-		RegistrationSucceeded, // Registration to master server succeeded, received confirmation.
-		UnregistrationSucceeded, // Unregistration to master server succeeded, received confirmation.
-		HostListReceived, // Received a host list from the master server.
-	}
+    public enum NetworkMasterServerEvent
+    {
+        RegistrationFailedGameName, // Registration failed because an empty game name was given.
+        RegistrationFailedGameType, // Registration failed because an empty game type was given.
+        RegistrationFailedNoServer, // Registration failed because no server is running.
+        RegistrationSucceeded, // Registration to master server succeeded, received confirmation.
+        UnregistrationSucceeded, // Unregistration to master server succeeded, received confirmation.
+        HostListReceived, // Received a host list from the master server.
+    }
 
-	// -------------- client to masterserver Ids --------------
+    // -------------- client to masterserver Ids --------------
 
-	public const short RegisterHostId = 150;
-	public const short UnregisterHostId = 151;
-	public const short RequestListOfHostsId = 152;
+    public const short RegisterHostId = 150;
+    public const short UnregisterHostId = 151;
+    public const short RequestListOfHostsId = 152;
 
-	// -------------- masterserver to client Ids --------------
+    // -------------- masterserver to client Ids --------------
 
-	public const short RegisteredHostId = 160;
-	public const short UnregisteredHostId = 161;
-	public const short ListOfHostsId = 162;
+    public const short RegisteredHostId = 160;
+    public const short UnregisteredHostId = 161;
+    public const short ListOfHostsId = 162;
 
     public const short updatePlayers = 163;
 
-	// -------------- client to server messages --------------
+    // -------------- client to server messages --------------
 
-	public class RegisterHostMessage : MessageBase
-	{
-		public string gameTypeName;
-		public string gameName;
-		public string comment;
-		public string password;
+    public class RegisterHostMessage : MessageBase
+    {
+        public string gameTypeName;
+        public string gameName;
+        public string comment;
+        public string password;
 
         public int currentPlayers;
-		public int playerLimit;
-		public int hostPort;
-	}
+        public int playerLimit = -1;
+        public int hostPort;
+    }
 
-	public class UnregisterHostMessage : MessageBase
-	{
-		public string gameTypeName;
-		public string gameName;
+    public class UnregisterHostMessage : MessageBase
+    {
+        public string gameTypeName;
+        public string gameName;
     }
 
     public class UpdatePlayerMessage : MessageBase
@@ -53,33 +53,33 @@ public class MasterMsgTypes
         public int newP;
     }
 
-	public class RequestHostListMessage : MessageBase
-	{
-		public string gameTypeName;
-	}
+    public class RequestHostListMessage : MessageBase
+    {
+        public string gameTypeName;
+    }
 
-	// -------------- server to client messages --------------
+    // -------------- server to client messages --------------
 
-	public struct Room
-	{
-		public string name;
-		public string comment;
-		public string password;
-		public int playerLimit;
+    public struct Room
+    {
+        public string name;
+        public string comment;
+        public string password;
+        public int playerLimit;
         public int currentPlayers;
-		public string hostIp;
-		public int hostPort;
-		public int connectionId;
-	}
+        public string hostIp;
+        public int hostPort;
+        public int connectionId;
+    }
 
-	public class ListOfHostsMessage : MessageBase
-	{
-		public int resultCode;
-		public Room[] hosts;
-	}
+    public class ListOfHostsMessage : MessageBase
+    {
+        public int resultCode;
+        public Room[] hosts;
+    }
 
-	public class RegisteredHostMessage : MessageBase
-	{
-		public int resultCode;
-	}
+    public class RegisteredHostMessage : MessageBase
+    {
+        public int resultCode;
+    }
 }
